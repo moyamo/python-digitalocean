@@ -29,25 +29,17 @@ class Manager(BaseAPI):
 
     def __deal_with_pagination(self, url, data, params):
         """
-            Perform multiple calls in order to have a full list of elements
-            when the API are "paginated". (content list is divided in more
-            than one page)
+            Perform another call to get the full list of elements if the API
+            request was paginated (content list was divided into more than one
+            page) by increasing the 'per_page' parameter.
         """
-        try:
-            pages = data['links']['pages']['last'].split('=')[-1]
-            key, values = data.popitem()
-            for page in range(2, int(pages) + 1):
-                params.update({'page': page})
-                new_data = super(Manager, self).get_data(url, params=params)
-
-                more_values = new_data.values()[0]
-                for value in more_values:
-                    values.append(value)
-            data = {}
-            data[key] = values
-        except KeyError:  # No pages.
-            pass
-
+        len_of_list = data['meta']['total']
+        params.update({'per_page': len_of_list})
+        # The name of the list in the json object is the usually url without
+        # the trailing slash. However, ssh_keys is an exception.
+        list_name = 'ssh_keys' if url == 'account/keys/' else url[:-1]
+        if len_of_list > len(data[list_name]):
+            data = super(Manager, self).get_data(url, params=params)
         return data
 
     def get_account(self):
